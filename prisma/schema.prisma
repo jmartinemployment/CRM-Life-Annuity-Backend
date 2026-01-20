@@ -1,0 +1,1559 @@
+// ACORD Life & Annuities CRM - Prisma Schema
+// Generated from ACORD XMLife 2.20.01 XSD files
+// 
+// This schema maps the core ACORD data structures for:
+// - Party management (Persons, Organizations)
+// - Holdings (Policies, Annuities)
+// - Coverages
+// - Relations (linking parties to holdings with roles)
+// - CRM-specific extensions (Activities, Notes)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// ENUMS - ACORD Type Codes (OLI_LU_ prefix indicates ACORD lookup types)
+// =============================================================================
+
+enum PartyTypeCode {
+  PERSON       // tc="1" - Individual
+  ORGANIZATION // tc="2" - Organization/Company
+}
+
+enum GenderCode {
+  MALE    // tc="1"
+  FEMALE  // tc="2"
+  UNKNOWN // tc="0"
+}
+
+enum MaritalStatus {
+  SINGLE           // tc="1"
+  MARRIED          // tc="2"
+  DIVORCED         // tc="3"
+  WIDOWED          // tc="4"
+  SEPARATED        // tc="5"
+  DOMESTIC_PARTNER // tc="6"
+  UNKNOWN          // tc="0"
+}
+
+enum AddressTypeCode {
+  RESIDENCE      // tc="1" - Home address
+  BUSINESS       // tc="2" - Work address
+  MAILING        // tc="5" - Mailing address
+  BILLING        // tc="18" - Billing address
+  PRIOR_RESIDENCE // tc="3" - Previous home
+  SEASONAL       // tc="4" - Seasonal/vacation
+  OTHER          // tc="0"
+}
+
+enum PhoneTypeCode {
+  HOME      // tc="1"
+  BUSINESS  // tc="2"
+  MOBILE    // tc="3"
+  FAX       // tc="4"
+  PAGER     // tc="5"
+  OTHER     // tc="0"
+}
+
+enum EmailTypeCode {
+  PERSONAL // tc="1"
+  BUSINESS // tc="2"
+  OTHER    // tc="0"
+}
+
+enum HoldingTypeCode {
+  POLICY      // tc="1" - Insurance policy
+  ANNUITY     // tc="2" - Annuity contract
+  INVESTMENT  // tc="3" - Investment account
+  BANKING     // tc="4" - Bank account
+  OTHER       // tc="0"
+}
+
+enum HoldingStatus {
+  PROPOSED       // tc="1"
+  PENDING        // tc="2"
+  ACTIVE         // tc="3" - Inforce
+  INACTIVE       // tc="4"
+  TERMINATED     // tc="5"
+  SURRENDERED    // tc="6"
+  LAPSED         // tc="7"
+  DEATH_CLAIM    // tc="8"
+  MATURED        // tc="9"
+  CANCELLED      // tc="10"
+  DECLINED       // tc="11"
+  NOT_TAKEN      // tc="12"
+  PAID_UP        // tc="13"
+  EXTENDED_TERM  // tc="14"
+  REDUCED_PAID_UP // tc="15"
+}
+
+enum PolicyStatus {
+  PROPOSAL_PENDING     // tc="1"
+  PENDING_ISSUE        // tc="2"
+  INFORCE_ACTIVE       // tc="3"
+  INFORCE_PREMIUM_PAYING // tc="4"
+  PENDING_REISSUE      // tc="5"
+  LAPSED               // tc="6"
+  SURRENDERED          // tc="7"
+  DEATH_CLAIM          // tc="8"
+  MATURED              // tc="9"
+  TERMINATED           // tc="10"
+  CANCELLED_BY_CARRIER // tc="11"
+  CANCELLED_BY_OWNER   // tc="12"
+  PENDING_RESCIND      // tc="13"
+  RESCINDED            // tc="14"
+  NOT_TAKEN            // tc="15"
+  DECLINED             // tc="16"
+  INCOMPLETE           // tc="17"
+  ISSUED               // tc="18"
+}
+
+enum LineOfBusiness {
+  LIFE      // tc="1"
+  ANNUITY   // tc="2"
+  HEALTH    // tc="3"
+  PROPERTY  // tc="4"
+  CASUALTY  // tc="5"
+  OTHER     // tc="0"
+}
+
+enum ProductType {
+  // Life Products
+  WHOLE_LIFE         // tc="1"
+  TERM_LIFE          // tc="2"
+  UNIVERSAL_LIFE     // tc="3"
+  VARIABLE_LIFE      // tc="4"
+  VARIABLE_UL        // tc="5"
+  INDEXED_UL         // tc="6"
+  
+  // Annuity Products
+  FIXED_ANNUITY      // tc="20"
+  VARIABLE_ANNUITY   // tc="21"
+  INDEXED_ANNUITY    // tc="22"
+  IMMEDIATE_ANNUITY  // tc="23"
+  DEFERRED_ANNUITY   // tc="24"
+  
+  OTHER              // tc="0"
+}
+
+enum QualifiedPlanType {
+  NON_QUALIFIED    // tc="0"
+  IRA              // tc="1"
+  ROTH_IRA         // tc="2"
+  SEP_IRA          // tc="3"
+  SIMPLE_IRA       // tc="4"
+  K401             // tc="5"
+  K403B            // tc="6"
+  K457             // tc="7"
+  PENSION          // tc="8"
+  PROFIT_SHARING   // tc="9"
+  KEOGH            // tc="10"
+  INHERITED_IRA    // tc="11"
+  OTHER            // tc="99"
+}
+
+enum PaymentMode {
+  ANNUAL       // tc="1"
+  SEMI_ANNUAL  // tc="2"
+  QUARTERLY    // tc="4"
+  MONTHLY      // tc="12"
+  WEEKLY       // tc="52"
+  BI_WEEKLY    // tc="26"
+  SINGLE       // tc="0" - One-time/lump sum
+}
+
+enum PaymentMethod {
+  CHECK           // tc="1"
+  EFT             // tc="2" - Electronic Funds Transfer
+  CREDIT_CARD     // tc="3"
+  PAYROLL_DEDUCT  // tc="4"
+  GOVT_ALLOTMENT  // tc="5"
+  AUTO_PREMIUM    // tc="6" - Automatic premium loan
+  DIVIDEND        // tc="7"
+  WIRE            // tc="8"
+  OTHER           // tc="0"
+}
+
+enum CoverageStatus {
+  ACTIVE       // tc="1"
+  PENDING      // tc="2"
+  TERMINATED   // tc="3"
+  WAIVED       // tc="4"
+  NOT_TAKEN    // tc="5"
+  REDUCED      // tc="6"
+}
+
+enum CoverageIndicatorCode {
+  BASE           // tc="1" - Base coverage
+  RIDER          // tc="2" - Rider/benefit
+  OPTION         // tc="3" - Coverage option
+  SUPPLEMENTAL   // tc="4"
+}
+
+enum RelationRoleCode {
+  // Policy Roles
+  OWNER               // tc="8" - Policy owner
+  INSURED             // tc="32" - Primary insured
+  JOINT_INSURED       // tc="186" - Joint insured
+  ANNUITANT           // tc="36" - Annuitant
+  JOINT_ANNUITANT     // tc="149" - Joint annuitant
+  PAYOR               // tc="31" - Premium payor
+  
+  // Beneficiary Roles
+  PRIMARY_BENEFICIARY     // tc="34"
+  CONTINGENT_BENEFICIARY  // tc="35"
+  FINAL_BENEFICIARY       // tc="187"
+  IRREVOCABLE_BENEFICIARY // tc="188"
+  
+  // Producer/Agent Roles
+  PRIMARY_AGENT           // tc="37"
+  SERVICING_AGENT         // tc="38"
+  WRITING_AGENT           // tc="126"
+  BROKER_DEALER           // tc="127"
+  
+  // Other Roles
+  TRUSTEE              // tc="189"
+  CUSTODIAN            // tc="190"
+  EMPLOYER             // tc="21"
+  GUARDIAN             // tc="191"
+  POWER_OF_ATTORNEY    // tc="192"
+  CARRIER              // tc="87" - Insurance carrier
+  
+  // Family Roles (for party-to-party relations)
+  SPOUSE               // tc="1"
+  CHILD                // tc="2"
+  PARENT               // tc="3"
+  SIBLING              // tc="4"
+  GRANDPARENT          // tc="5"
+  GRANDCHILD           // tc="6"
+  OTHER_RELATIVE       // tc="7"
+  
+  OTHER                // tc="0"
+}
+
+enum BeneficiaryDesignation {
+  NAMED           // tc="1" - Specifically named beneficiary
+  PER_STIRPES     // tc="2" - To descendants
+  ESTATE          // tc="3" - To estate
+  TRUST           // tc="4" - To trust
+  CHARITY         // tc="5"
+  CLASS           // tc="6" - Class designation (e.g., "all children")
+  OTHER           // tc="0"
+}
+
+enum GovtIdType {
+  SSN        // tc="1" - Social Security Number
+  FEIN       // tc="2" - Federal Employer ID
+  ITIN       // tc="3" - Individual Taxpayer ID
+  PASSPORT   // tc="4"
+  DRIVERS_LICENSE // tc="5"
+  OTHER      // tc="0"
+}
+
+enum OrgFormType {
+  SOLE_PROPRIETORSHIP // tc="1"
+  PARTNERSHIP         // tc="2"
+  LLC                 // tc="3"
+  CORPORATION         // tc="4"
+  S_CORP              // tc="5"
+  C_CORP              // tc="6"
+  NON_PROFIT          // tc="7"
+  TRUST               // tc="8"
+  ESTATE              // tc="9"
+  GOVERNMENT          // tc="10"
+  OTHER               // tc="0"
+}
+
+enum TrustType {
+  REVOCABLE           // tc="1"
+  IRREVOCABLE         // tc="2"
+  LIVING_TRUST        // tc="3"
+  TESTAMENTARY        // tc="4"
+  CHARITABLE          // tc="5"
+  SPECIAL_NEEDS       // tc="6"
+  QUALIFIED_TRUST     // tc="7"
+  ILIT                // tc="8" - Irrevocable Life Insurance Trust
+  OTHER               // tc="0"
+}
+
+// CRM-Specific Enums (Not ACORD standard)
+enum UserRole {
+  ADMIN     // Full access to all resources
+  AGENT     // Can manage own clients and activities
+  READONLY  // View-only access
+}
+
+enum ActivityType {
+  CALL
+  EMAIL
+  MEETING
+  TASK
+  NOTE
+  FOLLOW_UP
+  APPOINTMENT
+  QUOTE
+  APPLICATION
+  POLICY_DELIVERY
+  REVIEW
+  OTHER
+}
+
+enum ActivityStatus {
+  PENDING
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  DEFERRED
+}
+
+enum LeadSource {
+  REFERRAL
+  WEB_INQUIRY
+  COLD_CALL
+  WALK_IN
+  SEMINAR
+  DIRECT_MAIL
+  SOCIAL_MEDIA
+  EXISTING_CLIENT
+  PURCHASED_LIST
+  OTHER
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL_SENT
+  NEGOTIATION
+  WON
+  LOST
+  DORMANT
+}
+
+// =============================================================================
+// PARTY MODELS - Core entity for all people and organizations
+// =============================================================================
+
+/// Party - The central entity representing any person or organization
+/// Maps to ACORD Party_Type (XMLife2_20.xsd line 5925)
+model Party {
+  id                   String          @id @default(cuid())
+  partyTypeCode        PartyTypeCode   @default(PERSON)
+  
+  // ACORD Key fields
+  partyKey             String?         // External system key
+  carrierAdminSystem   String?         // Source system identifier
+  
+  // Common fields for all party types
+  fullName             String?         // Full name (person or org)
+  govtId               String?         // SSN, FEIN, etc.
+  govtIdType           GovtIdType?     @default(SSN)
+  
+  // Residence/Situs information
+  residenceState       String?         // State/Province code
+  residenceCountry     String?         @default("US")
+  residenceZip         String?
+  
+  // Financial information
+  estNetWorth          Decimal?        @db.Decimal(15, 2)
+  estTotalLiabilities  Decimal?        @db.Decimal(15, 2)
+  estTotalAssets       Decimal?        @db.Decimal(15, 2)
+  liquidNetWorth       Decimal?        @db.Decimal(15, 2)
+  
+  // Communication preferences
+  prefComm             String?         // Preferred communication method
+  bestTimeToCallFrom   String?
+  bestTimeToCallTo     String?
+  
+  // Person or Organization details (one will be populated)
+  person               Person?
+  organization         Organization?
+  
+  // Contact information
+  addresses            Address[]
+  phones               Phone[]
+  emails               EMailAddress[]
+  
+  // Role-specific details
+  carrier              Carrier?        // If party is a carrier
+  client               Client?         // CRM client info
+  producer             Producer?       // If party is an agent/producer
+  
+  // Employment (for persons)
+  employments          Employment[]
+  
+  // Relations - as originating party
+  relationsAsOrigin    Relation[]      @relation("OriginatingParty")
+  // Relations - as related party
+  relationsAsRelated   Relation[]      @relation("RelatedParty")
+  
+  // CRM Activities
+  activities           Activity[]
+  
+  // Attachments
+  attachments          Attachment[]
+  
+  // Metadata
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  isActive             Boolean         @default(true)
+  
+  @@index([partyTypeCode])
+  @@index([fullName])
+  @@index([govtId])
+  @@index([residenceState])
+}
+
+/// Person - Details specific to individual persons
+/// Maps to ACORD Person_Type (XMLife2_20.xsd line 6182)
+model Person {
+  id                   String          @id @default(cuid())
+  party                Party           @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  partyId              String          @unique
+  
+  // Name components
+  firstName            String
+  middleName           String?
+  lastName             String
+  prefix               String?         // Mr., Mrs., Dr., etc.
+  suffix               String?         // Jr., Sr., III, etc.
+  nickName             String?
+  initials             String?
+  title                String?         // Professional title
+  
+  // Demographics
+  gender               GenderCode?
+  birthDate            DateTime?       @db.Date
+  age                  Int?            // Calculated or stored
+  maritalStatus        MaritalStatus?
+  
+  // Citizenship
+  citizenship          String?         @default("US") // Country code
+  birthCountry         String?
+  birthJurisdiction    String?         // State/Province
+  birthCity            String?
+  
+  // Employment/Income
+  occupation           String?
+  occupationClass      String?         // ACORD occupation class
+  estimatedSalary      Decimal?        @db.Decimal(15, 2)
+  estimatedOtherIncome Decimal?        @db.Decimal(15, 2)
+  
+  // Health/Risk factors
+  tobaccoType          String?
+  smokerStatus         String?         // "Never", "Former", "Current"
+  height               Decimal?        @db.Decimal(5, 2) // In inches or cm
+  heightUnits          String?         @default("IN")
+  weight               Decimal?        @db.Decimal(5, 2) // In pounds or kg
+  weightUnits          String?         @default("LB")
+  
+  // Identification
+  driversLicenseNum    String?
+  driversLicenseState  String?
+  passportNo           String?
+  
+  // Immigration
+  immigrationStatus    String?
+  visaType             String?
+  visaExpDate          DateTime?       @db.Date
+  
+  // Death information (if applicable)
+  deathDate            DateTime?       @db.Date
+  causeOfDeath         String?
+  deathCountry         String?
+  
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  
+  @@index([lastName, firstName])
+  @@index([birthDate])
+}
+
+/// Organization - Details specific to organizations/companies
+/// Maps to ACORD Organization_Type (XMLife2_20.xsd line 5667)
+model Organization {
+  id                   String          @id @default(cuid())
+  party                Party           @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  partyId              String          @unique
+  
+  // Organization details
+  orgForm              OrgFormType?    // Business entity type
+  dba                  String?         // Doing Business As name
+  abbrName             String?         // Abbreviated name
+  
+  // Trust-specific (if orgForm is TRUST)
+  trustType            TrustType?
+  trustTypeDesc        String?
+  irrevocableInd       Boolean?
+  
+  // Business information
+  establishedDate      DateTime?       @db.Date
+  dissolvedDate        DateTime?       @db.Date
+  natureCategory       String?         // Industry category
+  natureSubCategory    String?
+  businessDesc         String?
+  
+  // Codes
+  sicCode              String?         // Standard Industry Classification
+  sicCodeDesc          String?
+  naicsCode            String?         // North American Industry Classification
+  naicsCodeDesc        String?
+  dunsNumber           String?         // D&B number
+  
+  // Financial
+  numEmployees         Int?
+  estTaxBracket        Decimal?        @db.Decimal(5, 2)
+  publiclyTraded       Boolean?        @default(false)
+  
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  
+  @@index([orgForm])
+  @@index([dba])
+}
+
+// =============================================================================
+// CONTACT INFORMATION MODELS
+// =============================================================================
+
+/// Address - Physical/mailing addresses for parties
+/// Maps to ACORD Address_Type (XMLife2_20.xsd line 156)
+model Address {
+  id                   String          @id @default(cuid())
+  party                Party           @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  partyId              String
+  
+  addressTypeCode      AddressTypeCode @default(RESIDENCE)
+  
+  // Address lines
+  attentionLine        String?
+  line1                String?
+  line2                String?
+  line3                String?
+  city                 String?
+  state                String?         // State/Province code
+  zip                  String?
+  country              String?         @default("US")
+  countyName           String?
+  
+  // Preferences
+  isPrimary            Boolean         @default(false)
+  solicitationInd      Boolean         @default(true) // OK to solicit
+  
+  // Validity period
+  startDate            DateTime?       @db.Date
+  endDate              DateTime?       @db.Date
+  yearsAtAddress       Int?
+  
+  // Seasonal address dates (MM-DD format)
+  recurringStartMoDay  String?         // e.g., "11-01"
+  recurringEndMoDay    String?         // e.g., "04-30"
+  
+  // Status
+  returnedMailInd      Boolean         @default(false)
+  isValid              Boolean         @default(true)
+  
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  
+  @@index([partyId])
+  @@index([addressTypeCode])
+  @@index([state, city])
+}
+
+/// Phone - Phone numbers for parties
+/// Maps to ACORD Phone_Type (XMLife2_20.xsd line 6287)
+model Phone {
+  id                   String          @id @default(cuid())
+  party                Party           @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  partyId              String
+  
+  phoneTypeCode        PhoneTypeCode   @default(HOME)
+  
+  countryCode          String?         @default("1")
+  areaCode             String?
+  dialNumber           String
+  extension            String?
+  
+  // Full formatted number (computed or stored)
+  fullNumber           String?
+  
+  // Preferences
+  isPrimary            Boolean         @default(false)
+  bestTimeToCallFrom   String?         // HH:MM format
+  bestTimeToCallTo     String?
+  solicitationInd      Boolean         @default(true)
+  
+  // Validity
+  startDate            DateTime?       @db.Date
+  endDate              DateTime?       @db.Date
+  isValid              Boolean         @default(true)
+  invalidInd           Boolean         @default(false)
+  
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  
+  @@index([partyId])
+  @@index([phoneTypeCode])
+}
+
+/// EMailAddress - Email addresses for parties
+/// Maps to ACORD EMailAddress_Type (XMLife2_20.xsd line 3009)
+model EMailAddress {
+  id                   String          @id @default(cuid())
+  party                Party           @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  partyId              String
+  
+  emailTypeCode        EmailTypeCode   @default(PERSONAL)
+  addrLine             String          // The actual email address
+  
+  // Preferences
+  isPrimary            Boolean         @default(false)
+  attachmentInd        Boolean         @default(true)  // OK to send attachments
+  solicitationInd      Boolean         @default(true)
+  
+  // Validity
+  startDate            DateTime?       @db.Date
+  endDate              DateTime?       @db.Date
+  undeliverableInd     Boolean         @default(false)
+  
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  
+  @@index([partyId])
+  @@index([addrLine])
+}
+
+/// Employment - Employment history for persons
+/// Maps to ACORD Employment_Type (XMLife2_20.xsd line 3028)
+model Employment {
+  id                   String          @id @default(cuid())
+  party                Party           @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  partyId              String
+  
+  // Employer reference (if employer is in system)
+  employerPartyId      String?
+  
+  employeeId           String?         // Employee ID at company
+  occupation           String?
+  title                String?
+  
+  // Dates
+  hireDate             DateTime?       @db.Date
+  terminationDate      DateTime?       @db.Date
+  retirementDate       DateTime?       @db.Date
+  
+  // Income
+  annualSalary         Decimal?        @db.Decimal(15, 2)
+  salaryMode           PaymentMode?    @default(ANNUAL)
+  annualEarnings       Decimal?        @db.Decimal(15, 2) // Total comp
+  hoursWorkedPerWeek   Decimal?        @db.Decimal(4, 1)
+  
+  // Status
+  employmentStatus     String?         // Full-time, Part-time, etc.
+  occupationClass      String?         // ACORD occupation class
+  
+  isCurrent            Boolean         @default(true)
+  
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  
+  @@index([partyId])
+  @@index([isCurrent])
+}
+
+// =============================================================================
+// PARTY ROLE MODELS - Specific roles parties can have
+// =============================================================================
+
+/// Client - CRM-specific client information (not ACORD standard)
+model Client {
+  id                   String          @id @default(cuid())
+  party                Party           @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  partyId              String          @unique
+  
+  // Lead/Prospect info
+  leadSource           LeadSource?
+  leadStatus           LeadStatus?     @default(NEW)
+  leadDate             DateTime?       @db.Date
+  convertedDate        DateTime?       @db.Date // When became client
+  
+  // Assigned agent
+  assignedAgentId      String?
+  
+  // Client preferences
+  riskTolerance        String?         // Conservative, Moderate, Aggressive
+  investmentObjective  String?
+  timeHorizon          String?
+  
+  // Anniversary tracking
+  reviewDate           DateTime?       @db.Date
+  lastContactDate      DateTime?       @db.Date
+  nextFollowUpDate     DateTime?       @db.Date
+  
+  // Notes
+  notes                String?         @db.Text
+  
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  
+  @@index([leadStatus])
+  @@index([assignedAgentId])
+}
+
+/// Producer - Agent/broker information
+/// Maps to ACORD Producer (referenced in Party_Type)
+model Producer {
+  id                   String          @id @default(cuid())
+  party                Party           @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  partyId              String          @unique
+  
+  // Producer identification
+  npn                  String?         // National Producer Number
+  stateProducerNum     String?
+  
+  // Licensing
+  licenseState         String?
+  licenseNumber        String?
+  licenseExpDate       DateTime?       @db.Date
+  
+  // Appointments
+  appointedCarriers    String[]        // Array of carrier codes
+  
+  // Commission info
+  commissionLevel      String?
+  commissionSplit      Decimal?        @db.Decimal(5, 4) // Percentage
+  
+  // Hierarchy
+  uplineProducerId     String?
+  
+  isActive             Boolean         @default(true)
+  
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  
+  @@index([npn])
+  @@index([isActive])
+}
+
+/// Carrier - Insurance company information
+/// Maps to ACORD Carrier (referenced in Party_Type)
+model Carrier {
+  id                   String          @id @default(cuid())
+  party                Party           @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  partyId              String          @unique
+  
+  carrierCode          String          @unique // ACORD carrier code
+  naicCode             String?         // NAIC company code
+  amBestCode           String?
+  amBestRating         String?
+  
+  // Contact
+  website              String?
+  phoneNumber          String?
+  
+  // Products offered
+  productsOffered      String[]        // Array of product type codes
+  
+  isActive             Boolean         @default(true)
+  
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  
+  @@index([carrierCode])
+}
+
+// =============================================================================
+// HOLDING MODELS - Policies, Annuities, and Contracts
+// =============================================================================
+
+/// Holding - Container for all types of financial holdings (policies, annuities, etc.)
+/// Maps to ACORD Holding_Type (XMLife2_20.xsd line 3893)
+model Holding {
+  id                   String          @id @default(cuid())
+  
+  // ACORD identification
+  holdingKey           String?         // External system key
+  carrierAdminSystem   String?
+  
+  holdingTypeCode      HoldingTypeCode @default(POLICY)
+  holdingStatus        HoldingStatus   @default(PROPOSED)
+  holdingName          String?         // Friendly name
+  
+  // Financial
+  currencyTypeCode     String?         @default("USD")
+  assetValue           Decimal?        @db.Decimal(15, 2)
+  liabilityValue       Decimal?        @db.Decimal(15, 2)
+  costBasis            Decimal?        @db.Decimal(15, 2)
+  
+  // Dates
+  asOfDate             DateTime?       @db.Date
+  lastFinActivityDate  DateTime?       @db.Date
+  lastAnniversaryDate  DateTime?       @db.Date
+  nextAnniversaryDate  DateTime?       @db.Date
+  
+  // The actual policy details
+  policy               Policy?
+  
+  // Relations to parties (owner, insured, beneficiaries, etc.)
+  relationsAsOrigin    Relation[]      @relation("OriginatingHolding")
+  
+  // Loans against the holding
+  loans                Loan[]
+  
+  // Arrangements (systematic withdrawals, premium allocations, etc.)
+  arrangements         Arrangement[]
+  
+  // Attachments
+  attachments          Attachment[]
+  
+  // CRM Activities
+  activities           Activity[]
+  
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  
+  @@index([holdingTypeCode])
+  @@index([holdingStatus])
+}
+
+/// Policy - Insurance policy specific information
+/// Maps to ACORD Policy_Type (XMLife2_20.xsd line 6343)
+model Policy {
+  id                   String          @id @default(cuid())
+  holding              Holding         @relation(fields: [holdingId], references: [id], onDelete: Cascade)
+  holdingId            String          @unique
+  
+  // Identification
+  polNumber            String          // Policy number
+  certificateNo        String?         // For group policies
+  billNumber           String?
+  
+  // Product info
+  lineOfBusiness       LineOfBusiness  @default(LIFE)
+  productType          ProductType?
+  productCode          String?         // Carrier's product code
+  productVersionCode   String?
+  planName             String?
+  marketingName        String?
+  
+  // Carrier
+  carrierCode          String?         // Reference to carrier
+  carrierPartyId       String?         // Party ID of carrier
+  administeringCarrier String?
+  
+  // Status
+  policyStatus         PolicyStatus    @default(PROPOSAL_PENDING)
+  statusReason         String?
+  statusChangeDate     DateTime?       @db.Date
+  
+  // Jurisdiction
+  issueNation          String?         @default("US")
+  jurisdiction         String?         // State of issue
+  
+  // Key dates
+  effDate              DateTime?       @db.Date // Effective date
+  issueDate            DateTime?       @db.Date
+  termDate             DateTime?       @db.Date
+  paidToDate           DateTime?       @db.Date
+  billedToDate         DateTime?       @db.Date
+  gracePeriodEndDate   DateTime?       @db.Date
+  renewalDate          DateTime?       @db.Date
+  
+  // Premium/Payment
+  paymentMode          PaymentMode?    @default(MONTHLY)
+  paymentAmt           Decimal?        @db.Decimal(15, 2)
+  annualPaymentAmt     Decimal?        @db.Decimal(15, 2)
+  paymentMethod        PaymentMethod?  @default(EFT)
+  paymentDueDate       DateTime?       @db.Date
+  paymentDraftDay      Int?            // Day of month for auto-draft
+  
+  // Banking for EFT
+  bankName             String?
+  bankAcctType         String?         // Checking, Savings
+  routingNumber        String?
+  accountNumber        String?
+  acctHolderName       String?
+  
+  // Policy value
+  policyValue          Decimal?        @db.Decimal(15, 2)
+  policyFee            Decimal?        @db.Decimal(15, 2)
+  
+  // Replacement
+  replacementType      String?         // Internal, External, None
+  
+  // Tax
+  taxStatus            String?
+  qualPlanType         QualifiedPlanType? @default(NON_QUALIFIED)
+  
+  // The Life or Annuity specific details
+  life                 Life?
+  annuity              Annuity?
+  
+  // Coverages
+  coverages            Coverage[]
+  
+  // Requirements/Pending items
+  requirements         RequirementInfo[]
+  
+  // Claims
+  claims               Claim[]
+  
+  // Application info
+  applicationInfo      ApplicationInfo?
+  
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  
+  @@unique([polNumber, carrierCode])
+  @@index([policyStatus])
+  @@index([effDate])
+  @@index([carrierCode])
+}
+
+/// Life - Life insurance specific policy details
+/// Maps to ACORD Life_Type (XMLife2_20.xsd line 4681)
+model Life {
+  id                   String          @id @default(cuid())
+  policy               Policy          @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  policyId             String          @unique
+  
+  // Qualified plan
+  qualPlanType         QualifiedPlanType?
+  
+  // Face amount
+  faceAmt              Decimal?        @db.Decimal(15, 2)
+  faceUnits            Decimal?        @db.Decimal(15, 4)
+  valuePerUnit         Decimal?        @db.Decimal(15, 4)
+  
+  // Death benefit
+  deathBenefitAmt      Decimal?        @db.Decimal(15, 2)
+  netDeathBenefitAmt   Decimal?        @db.Decimal(15, 2)
+  
+  // Cash values
+  cashValueAmt         Decimal?        @db.Decimal(15, 2)
+  netSurrValueAmt      Decimal?        @db.Decimal(15, 2)
+  surrenderChargeAmt   Decimal?        @db.Decimal(15, 2)
+  
+  // Premium
+  targetPremAmt        Decimal?        @db.Decimal(15, 2)
+  minPremAmt           Decimal?        @db.Decimal(15, 2)
+  grossPremAmtITD      Decimal?        @db.Decimal(15, 2) // Inception to date
+  totCumPremAmt        Decimal?        @db.Decimal(15, 2)
+  lastPremAmt          Decimal?        @db.Decimal(15, 2)
+  lastPremDate         DateTime?       @db.Date
+  
+  // Interest
+  currIntRate          Decimal?        @db.Decimal(7, 5) // e.g., 0.04500
+  guarIntRate          Decimal?        @db.Decimal(7, 5)
+  
+  // Loan
+  loanAmtATD           Decimal?        @db.Decimal(15, 2) // Anniversary to date
+  currLoanIntRate      Decimal?        @db.Decimal(7, 5)
+  maxAvailableLoan     Decimal?        @db.Decimal(15, 2)
+  
+  // Dividends
+  divType              String?         // Dividend option
+  lastDivAmt           Decimal?        @db.Decimal(15, 2)
+  lastDivDate          DateTime?       @db.Date
+  divOnDepositAmt      Decimal?        @db.Decimal(15, 2)
+  divPUA               Decimal?        @db.Decimal(15, 2) // Paid-up additions
+  
+  // Withdrawals
+  totWthdrwlAmtITD     Decimal?        @db.Decimal(15, 2)
+  numWthdrwITD         Int?            @default(0)
+  
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+}
+
+/// Annuity - Annuity specific contract details
+/// Maps to ACORD Annuity_Type (XMLife2_20.xsd line 429)
+model Annuity {
+  id                   String          @id @default(cuid())
+  policy               Policy          @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  policyId             String          @unique
+  
+  // Annuity type
+  premType             String?         // Single, Flexible
+  payoutType           String?         // Immediate, Deferred
+  qualPlanType         QualifiedPlanType?
+  
+  // Source of funds
+  sourceOfFunds        String?
+  ownershipOfFunds     String?
+  
+  // Values
+  surrenderValue       Decimal?        @db.Decimal(15, 2)
+  surrenderCharge      Decimal?        @db.Decimal(15, 2)
+  deathBenefitAmt      Decimal?        @db.Decimal(15, 2)
+  cashValueMaturity    Decimal?        @db.Decimal(15, 2)
+  
+  // Interest
+  guarIntRate          Decimal?        @db.Decimal(7, 5)
+  guarLifetimeRate     Decimal?        @db.Decimal(7, 5)
+  accumValueIntRateCurrent Decimal?    @db.Decimal(7, 5)
+  
+  // Deposits/Premiums
+  initDepositAmt       Decimal?        @db.Decimal(15, 2)
+  initDepositDate      DateTime?       @db.Date
+  totalDepositITD      Decimal?        @db.Decimal(15, 2)
+  grossPremATD         Decimal?        @db.Decimal(15, 2)
+  
+  // Withdrawals
+  cumWthdrwlAmtITD     Decimal?        @db.Decimal(15, 2)
+  numWthdrwITD         Int?            @default(0)
+  withdrawalRule       String?
+  
+  // Key dates
+  manPayoutDate        DateTime?       @db.Date // Mandatory payout date
+  penaltyPhaseEndDate  DateTime?       @db.Date
+  guarIntEndDate       DateTime?       @db.Date
+  
+  // Payout information
+  payouts              Payout[]
+  
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+}
+
+/// Payout - Annuity payout/income stream details
+/// Maps to ACORD Payout_Type (XMLife2_20.xsd line 6057)
+model Payout {
+  id                   String          @id @default(cuid())
+  annuity              Annuity         @relation(fields: [annuityId], references: [id], onDelete: Cascade)
+  annuityId            String
+  
+  incomeOption         String?         // Life, Joint, Period Certain, etc.
+  payoutType           String?
+  payoutAmt            Decimal?        @db.Decimal(15, 2)
+  payoutPct            Decimal?        @db.Decimal(7, 5)
+  payoutMode           PaymentMode?
+  payoutForm           String?         // Check, EFT
+  
+  startDate            DateTime?       @db.Date
+  payoutEndDate        DateTime?       @db.Date
+  nextPayoutDate       DateTime?       @db.Date
+  
+  // Tax
+  taxWithheldInd       Boolean?        @default(false)
+  federalTaxWithheld   Decimal?        @db.Decimal(15, 2)
+  jurisdictionTaxWithheld Decimal?     @db.Decimal(15, 2)
+  exclusionRatio       Decimal?        @db.Decimal(7, 5)
+  
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  
+  @@index([annuityId])
+}
+
+/// Coverage - Individual coverages/riders under a policy
+/// Maps to ACORD Coverage_Type (XMLife2_20.xsd line 1988)
+model Coverage {
+  id                   String          @id @default(cuid())
+  policy               Policy          @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  policyId             String
+  
+  // Identification
+  coverageKey          String?
+  covNumber            String?         // Coverage number within policy
+  productCode          String?
+  planName             String?
+  
+  // Type
+  indicatorCode        CoverageIndicatorCode @default(BASE)
+  lifeCovTypeCode      String?         // Term, Whole Life, UL, etc.
+  lifeCovStatus        CoverageStatus  @default(ACTIVE)
+  
+  // Amounts
+  currentAmt           Decimal?        @db.Decimal(15, 2) // Face/benefit amount
+  deathBenefitAmt      Decimal?        @db.Decimal(15, 2)
+  initCovAmt           Decimal?        @db.Decimal(15, 2) // Initial amount
+  cashValue            Decimal?        @db.Decimal(15, 2)
+  
+  // Premium
+  modalPremAmt         Decimal?        @db.Decimal(15, 2)
+  annualPremAmt        Decimal?        @db.Decimal(15, 2)
+  targetPremAmt        Decimal?        @db.Decimal(15, 2)
+  
+  // Dates
+  effDate              DateTime?       @db.Date
+  termDate             DateTime?       @db.Date
+  paidToDate           DateTime?       @db.Date
+  
+  // Duration
+  duration             Int?            // Policy year
+  benefitPeriod        Int?            // For DI/LTC
+  
+  // Underwriting
+  issueGender          GenderCode?
+  equivalentAge        Int?
+  guarIntRate          Decimal?        @db.Decimal(7, 5)
+  
+  // Participants covered by this coverage
+  lifeParticipants     LifeParticipant[]
+  
+  // Coverage options/riders
+  covOptions           CovOption[]
+  
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  
+  @@index([policyId])
+  @@index([indicatorCode])
+}
+
+/// LifeParticipant - Links coverages to the parties they cover
+/// Maps to ACORD LifeParticipant_Type
+model LifeParticipant {
+  id                   String          @id @default(cuid())
+  coverage             Coverage        @relation(fields: [coverageId], references: [id], onDelete: Cascade)
+  coverageId           String
+  
+  partyId              String          // Reference to Party
+  
+  // Participant type
+  participantType      String?         // Primary, Joint, etc.
+  
+  // Underwriting
+  issueAge             Int?
+  issueGender          GenderCode?
+  underwritingClass    String?         // Preferred, Standard, Substandard
+  tobaccoClass         String?         // Non-tobacco, Tobacco
+  
+  // Rating
+  tableRating          String?         // Table A, B, C, etc.
+  flatExtraAmt         Decimal?        @db.Decimal(15, 2)
+  flatExtraEndDate     DateTime?       @db.Date
+  permFlatExtraAmt     Decimal?        @db.Decimal(15, 2)
+  
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  
+  @@index([coverageId])
+  @@index([partyId])
+}
+
+/// CovOption - Riders and options attached to coverages
+/// Maps to ACORD CovOption_Type
+model CovOption {
+  id                   String          @id @default(cuid())
+  coverage             Coverage        @relation(fields: [coverageId], references: [id], onDelete: Cascade)
+  coverageId           String
+  
+  optionType           String?         // WP, ADB, GPO, etc.
+  optionCode           String?
+  optionName           String?
+  
+  optionAmt            Decimal?        @db.Decimal(15, 2)
+  optionPremAmt        Decimal?        @db.Decimal(15, 2)
+  
+  effDate              DateTime?       @db.Date
+  termDate             DateTime?       @db.Date
+  
+  isActive             Boolean         @default(true)
+  
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  
+  @@index([coverageId])
+}
+
+// =============================================================================
+// RELATION MODEL - Links parties to holdings with specific roles
+// =============================================================================
+
+/// Relation - Defines relationships between parties and holdings
+/// Maps to ACORD Relation_Type (XMLife2_20.xsd line 7382)
+model Relation {
+  id                     String              @id @default(cuid())
+  
+  // The originating object (typically a Holding/Party)
+  originatingParty       Party?              @relation("OriginatingParty", fields: [originatingPartyId], references: [id])
+  originatingPartyId     String?
+  originatingHolding     Holding?            @relation("OriginatingHolding", fields: [originatingHoldingId], references: [id])
+  originatingHoldingId   String?
+  
+  // The related object (typically a Party)
+  relatedParty           Party?              @relation("RelatedParty", fields: [relatedPartyId], references: [id])
+  relatedPartyId         String?
+  
+  // Relation details
+  relationRoleCode       RelationRoleCode
+  relationDescription    String?
+  
+  // For beneficiaries
+  interestPercent        Decimal?            @db.Decimal(7, 4) // e.g., 50.0000%
+  beneficiarySeqNum      Int?                // 1=Primary, 2=Contingent, etc.
+  beneficiaryDesignation BeneficiaryDesignation?
+  irrevocableInd         Boolean?            @default(false)
+  
+  // For producers
+  volumeSharePct         Decimal?            @db.Decimal(7, 4) // Commission split
+  commScheduleCode       String?
+  
+  // Validity period
+  startDate              DateTime?           @db.Date
+  endDate                DateTime?           @db.Date
+  
+  // Sequence/priority
+  sequence               Int?
+  
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  
+  @@index([originatingPartyId])
+  @@index([originatingHoldingId])
+  @@index([relatedPartyId])
+  @@index([relationRoleCode])
+}
+
+// =============================================================================
+// SUPPORTING MODELS
+// =============================================================================
+
+/// Loan - Loans against life insurance policies
+/// Maps to ACORD Loan_Type
+model Loan {
+  id                   String          @id @default(cuid())
+  holding              Holding         @relation(fields: [holdingId], references: [id], onDelete: Cascade)
+  holdingId            String
+  
+  loanType             String?         // Standard, Preferred
+  loanAmt              Decimal?        @db.Decimal(15, 2)
+  loanIntRate          Decimal?        @db.Decimal(7, 5)
+  loanDate             DateTime?       @db.Date
+  
+  loanBalance          Decimal?        @db.Decimal(15, 2)
+  accruedInterest      Decimal?        @db.Decimal(15, 2)
+  
+  loanPaymentAmt       Decimal?        @db.Decimal(15, 2)
+  loanPaymentMode      PaymentMode?
+  
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  
+  @@index([holdingId])
+}
+
+/// Arrangement - Systematic transactions (withdrawals, deposits, reallocations)
+/// Maps to ACORD Arrangement_Type
+model Arrangement {
+  id                   String          @id @default(cuid())
+  holding              Holding         @relation(fields: [holdingId], references: [id], onDelete: Cascade)
+  holdingId            String
+  
+  arrType              String?         // Systematic Withdrawal, Dollar Cost Avg, etc.
+  arrMode              PaymentMode?
+  arrAmt               Decimal?        @db.Decimal(15, 2)
+  arrPct               Decimal?        @db.Decimal(7, 5)
+  
+  startDate            DateTime?       @db.Date
+  endDate              DateTime?       @db.Date
+  nextProcessDate      DateTime?       @db.Date
+  
+  isActive             Boolean         @default(true)
+  
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  
+  @@index([holdingId])
+}
+
+/// RequirementInfo - Outstanding requirements/pending items
+/// Maps to ACORD RequirementInfo_Type
+model RequirementInfo {
+  id                   String          @id @default(cuid())
+  policy               Policy          @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  policyId             String
+  
+  reqCode              String?         // Requirement type code
+  requirementDetails   String?
+  reqStatus            String?         // Outstanding, Received, Waived
+  
+  requestedDate        DateTime?       @db.Date
+  receivedDate         DateTime?       @db.Date
+  fulfilledDate        DateTime?       @db.Date
+  
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  
+  @@index([policyId])
+  @@index([reqStatus])
+}
+
+/// ApplicationInfo - Insurance application details
+/// Maps to ACORD ApplicationInfo_Type
+model ApplicationInfo {
+  id                   String          @id @default(cuid())
+  policy               Policy          @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  policyId             String          @unique
+  
+  applicationNumber    String?
+  applicationDate      DateTime?       @db.Date
+  signedDate           DateTime?       @db.Date
+  submittedDate        DateTime?       @db.Date
+  
+  applicationState     String?         // State where signed
+  replacementInd       Boolean?        @default(false)
+  
+  requestedPolNumber   String?
+  
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+}
+
+/// Claim - Insurance claims
+/// Maps to ACORD Claim_Type
+model Claim {
+  id                   String          @id @default(cuid())
+  policy               Policy          @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  policyId             String
+  
+  claimNumber          String?
+  claimType            String?         // Death, Disability, Surrender, etc.
+  claimStatus          String?         // Pending, Approved, Denied, Paid
+  
+  claimDate            DateTime?       @db.Date
+  notificationDate     DateTime?       @db.Date
+  
+  claimAmt             Decimal?        @db.Decimal(15, 2)
+  paidAmt              Decimal?        @db.Decimal(15, 2)
+  paidDate             DateTime?       @db.Date
+  
+  causeOfLoss          String?
+  description          String?         @db.Text
+  
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  
+  @@index([policyId])
+  @@index([claimStatus])
+}
+
+/// Attachment - Documents and files
+/// Maps to ACORD Attachment_Type
+model Attachment {
+  id                   String          @id @default(cuid())
+  
+  // Can be attached to Party or Holding
+  party                Party?          @relation(fields: [partyId], references: [id])
+  partyId              String?
+  holding              Holding?        @relation(fields: [holdingId], references: [id])
+  holdingId            String?
+  
+  attachmentType       String?         // Application, Illustration, Statement, etc.
+  attachmentName       String?
+  description          String?
+  
+  // File storage
+  fileName             String?
+  mimeType             String?
+  fileSize             Int?
+  storageUrl           String?         // URL/path to file
+  
+  // Dates
+  creationDate         DateTime?       @db.Date
+  
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  
+  @@index([partyId])
+  @@index([holdingId])
+}
+
+// =============================================================================
+// CRM-SPECIFIC MODELS (Not ACORD standard)
+// =============================================================================
+
+/// Activity - CRM activities, tasks, and interactions
+model Activity {
+  id                   String          @id @default(cuid())
+  
+  // Related to Party and/or Holding
+  party                Party?          @relation(fields: [partyId], references: [id])
+  partyId              String?
+  holding              Holding?        @relation(fields: [holdingId], references: [id])
+  holdingId            String?
+  
+  // Activity details
+  activityType         ActivityType    @default(NOTE)
+  activityStatus       ActivityStatus  @default(PENDING)
+  
+  subject              String?
+  description          String?         @db.Text
+  
+  // Scheduling
+  dueDate              DateTime?       @db.Date
+  dueTime              String?         // HH:MM format
+  startDate            DateTime?       @db.Date
+  endDate              DateTime?       @db.Date
+  
+  // Completion
+  completedDate        DateTime?       @db.Date
+  completedBy          String?         // User ID
+  
+  // Assignment
+  assignedTo           String?         // User ID
+  createdBy            String?         // User ID
+  
+  // Priority
+  priority             Int?            @default(3) // 1=High, 2=Medium, 3=Low
+  
+  // Recurrence
+  isRecurring          Boolean         @default(false)
+  recurringFrequency   String?         // Daily, Weekly, Monthly, etc.
+  
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  
+  @@index([partyId])
+  @@index([holdingId])
+  @@index([activityType])
+  @@index([activityStatus])
+  @@index([dueDate])
+  @@index([assignedTo])
+}
+
+// =============================================================================
+// USER AUTHENTICATION MODELS
+// =============================================================================
+
+/// User - Authentication and authorization for CRM users
+model User {
+  id                   String          @id @default(cuid())
+  
+  email                String          @unique
+  passwordHash         String
+  
+  // Profile
+  firstName            String
+  lastName             String
+  displayName          String?
+  
+  // Role-based access
+  role                 UserRole        @default(AGENT)
+  
+  // Link to Party (optional - for agents who are also producers)
+  partyId              String?         @unique
+  
+  // Account status
+  isActive             Boolean         @default(true)
+  isVerified           Boolean         @default(false)
+  
+  // Token management
+  refreshTokens        RefreshToken[]
+  
+  // Password reset
+  passwordResetToken   String?
+  passwordResetExpires DateTime?
+  
+  // Login tracking
+  lastLoginAt          DateTime?
+  failedLoginAttempts  Int             @default(0)
+  lockedUntil          DateTime?
+  
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  
+  @@index([email])
+  @@index([role])
+  @@index([isActive])
+}
+
+/// RefreshToken - JWT refresh tokens for session management
+model RefreshToken {
+  id                   String          @id @default(cuid())
+  
+  user                 User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId               String
+  
+  token                String          @unique
+  expiresAt            DateTime
+  
+  // Device/session info
+  userAgent            String?
+  ipAddress            String?
+  
+  // Revocation
+  isRevoked            Boolean         @default(false)
+  revokedAt            DateTime?
+  revokedReason        String?
+  
+  createdAt            DateTime        @default(now())
+  
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+// =============================================================================
+// EXTENSIBILITY MODELS
+// =============================================================================
+
+/// KeyedValue - Extensible key-value pairs for custom data
+/// Maps to ACORD KeyedValue_Type - used throughout ACORD for extensions
+model KeyedValue {
+  id                   String          @id @default(cuid())
+  
+  // Can be attached to various entities
+  entityType           String          // Party, Holding, Policy, etc.
+  entityId             String
+  
+  keyName              String
+  keyValue             String?
+  vendorCode           String?         // Identifies source system
+  
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  
+  @@unique([entityType, entityId, keyName, vendorCode])
+  @@index([entityType, entityId])
+  @@index([keyName])
+}
+
+/// SystemMessage - System-generated messages and alerts
+model SystemMessage {
+  id                   String          @id @default(cuid())
+  
+  entityType           String?
+  entityId             String?
+  
+  messageCode          String?
+  messageType          String?         // Error, Warning, Info
+  messageText          String          @db.Text
+  
+  isRead               Boolean         @default(false)
+  
+  createdAt            DateTime        @default(now())
+  
+  @@index([entityType, entityId])
+  @@index([isRead])
+}
+
+/// AuditLog - Track changes to records
+model AuditLog {
+  id                   String          @id @default(cuid())
+  
+  entityType           String
+  entityId             String
+  action               String          // CREATE, UPDATE, DELETE
+  
+  userId               String?
+  
+  oldValues            Json?
+  newValues            Json?
+  
+  createdAt            DateTime        @default(now())
+  
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
