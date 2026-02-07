@@ -1,0 +1,51 @@
+# Render Blueprint for ACORD Life & Annuity CRM Backend
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: crm-life-annuity-backend
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false  # Set manually in Render dashboard
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: ACCESS_TOKEN_EXPIRY
+        value: 15m
+      - key: REFRESH_TOKEN_EXPIRY
+        value: 7d
+      - key: BCRYPT_ROUNDS
+        value: 12
+      - key: MAX_LOGIN_ATTEMPTS
+        value: 5
+      - key: LOCKOUT_DURATION_MINUTES
+        value: 30
+      - key: CORS_ORIGINS
+        value: https://crm-life-annuity-backend.onrender.com,https://geekatyourspot.com,http://localhost:4200,http://localhost:4201
+      - key: APP_NAME
+        value: ACORD LHA CRM
+      - key: APP_URL
+        value: https://crm-life-annuity-backend.onrender.com
+      - key: SUPABASE_URL
+        sync: false  # Set manually in Render dashboard
+      - key: SUPABASE_SERVICE_KEY
+        sync: false  # Set manually in Render dashboard
+      - key: SUPABASE_STORAGE_BUCKET
+        value: attachments
+      - key: MAX_FILE_SIZE_MB
+        value: 10
+      - key: RESEND_API_KEY
+        sync: false  # Set manually in Render dashboard
+      - key: EMAIL_FROM
+        value: contact@geekatyourspot.com
